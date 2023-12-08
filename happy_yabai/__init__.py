@@ -10,12 +10,33 @@ app.add_typer(events_app, name="events", no_args_is_help=True)
 cmds_app = typer.Typer()
 app.add_typer(cmds_app, name="cmds", no_args_is_help=True)
 
+@cmds_app.command("cycle-layout")
+def cycle_layout():
+    yabai = Yabai()
+    layout = yabai.yabai_run_with_json("""yabai -m query --spaces --display | jq 'map(select(."is-visible"))[0].type'""")
+    if layout == "stack":
+        yabai.yabai_run("yabai -m space --layout bsp")
+    else:
+        yabai.yabai_run("yabai -m space --layout stack")
+
+@cmds_app.command("cycle-win-and-stack")
+def cycle_win_and_stack():
+    yabai = Yabai()
+    layout = yabai.yabai_run_with_json("""yabai -m query --spaces --display | jq 'map(select(."is-visible"))[0].type'""")
+    if layout == "stack":
+        yabai.yabai_run("yabai -m window --focus stack.next || yabai -m window --focus stack.first")
+    else:
+        yabai.yabai_run("yabai -m window --focus next || yabai -m window --focus first")
+
+
 @cmds_app.command("move-or-prev")
 def move_or_prev(space: int):
     yabai = Yabai()
     current_space = yabai.yabai_run_with_json("""yabai -m query --windows | jq 'map(select(."has-focus"))[0].space'""")
+    current_win = yabai.yabai_run_with_json("""yabai -m query --windows | jq 'map(select(."has-focus"))[].id'""")
     if space != current_space:
         yabai.yabai_run(f"yabai -m window --space {space}")
+        yabai.yabai_run(f"yabai -m window {current_win} --focus")
         print("move window", space, current_space)
     else:
         yabai.yabai_run("yabai -m window --focus stack.prev || yabai -m window --focus stack.last || true")
