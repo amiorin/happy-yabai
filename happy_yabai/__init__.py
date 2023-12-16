@@ -1,3 +1,4 @@
+from typing import Any
 import typer
 import json
 import subprocess
@@ -34,10 +35,15 @@ def move_or_prev(space: int):
     yabai = Yabai()
     current_space = yabai.yabai_run_with_json("""yabai -m query --windows | jq 'map(select(."has-focus"))[0].space'""")
     current_win = yabai.yabai_run_with_json("""yabai -m query --windows | jq 'map(select(."has-focus"))[].id'""")
+    # Only one window in space > 2
     if space != current_space:
-        yabai.yabai_run(f"yabai -m window --space {space}")
+        if space > 2:
+            target_win = yabai.yabai_run_with_json(f"""yabai -m query --windows --space {space} | jq 'sort_by(."stack-index")[-1].id'""")
+            if target_win:
+                yabai.yabai_run(f"yabai -m window {target_win} --space {current_space}")
+        yabai.yabai_run(f"yabai -m window {current_win} --space {space}")
         yabai.yabai_run(f"yabai -m window {current_win} --focus")
-        print("move window", space, current_space)
+        print(f"move window {current_win} from space {current_space} to space {space}")
     else:
         yabai.yabai_run("yabai -m window --focus stack.prev || yabai -m window --focus stack.last || true")
         print("cycle backwards", space, current_space)
@@ -82,6 +88,24 @@ def space_moved():
 def fix_left_padding(pixels):
     yabai = Yabai()
     yabai.fix_left_padding(pixels)
+
+@events_app.command("only-one-window")
+def only_one_window():
+    win_id = int(os.environ["YABAI_WINDOW_ID"])
+    yabai = Yabai()
+    display = yabai.yabai_run_with_json("""yabai -m query --windows | jq 'map(select(."has-focus"))[0].display'""")
+    if display != 2:
+        return
+    yabai.yabai_run(f"""yabai -m window --focus {win_id}""")
+    wins = yabai.yabai_run_with_json(f"""yabai -m query --windows --display 2 | jq 'map(select(."has-focus"|not)|.id)'""")
+    last = None
+    for win in wins:
+        last = win
+        yabai.yabai_run(f"""yabai -m window {win} --display 1""")
+    if last:
+        yabai.yabai_run(f"""yabai -m window --focus {last}""")
+        yabai.yabai_run(f"""yabai -m window --focus {win_id}""")
+    
 
 class Yabai:
     def __init__(self):
@@ -129,11 +153,13 @@ class Yabai:
         else:
             return 1
 
-    def yabai_run_with_json(self, cmd: str) -> json:
+    def yabai_run_with_json(self, cmd: str) -> Any:
+        print(cmd)
         output = subprocess.run(cmd, capture_output=True, text=True, check=True, shell=True)
         return json.loads(output.stdout)
 
     def yabai_run(self, cmd: str):
+        print(cmd)
         subprocess.run(cmd, check=True, shell=True)
 
 def run():
