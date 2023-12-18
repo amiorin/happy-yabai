@@ -43,10 +43,25 @@ def move_or_prev(space: int):
                 yabai.yabai_run(f"yabai -m window {target_win} --space {current_space}")
         yabai.yabai_run(f"yabai -m window {current_win} --space {space}")
         yabai.yabai_run(f"yabai -m window {current_win} --focus")
-        print(f"move window {current_win} from space {current_space} to space {space}")
     else:
-        yabai.yabai_run("yabai -m window --focus stack.prev || yabai -m window --focus stack.last || true")
-        print("cycle backwards", space, current_space)
+        layout = yabai.yabai_run_with_json("""yabai -m query --spaces --display | jq 'map(select(."is-visible"))[0].type'""")
+        if layout == "stack":
+            yabai.yabai_run("yabai -m window --focus stack.prev || yabai -m window --focus stack.last || true")
+        else:
+            yabai.yabai_run("yabai -m window --focus prev || yabai -m window --focus last || true")
+
+@cmds_app.command("move-or-next")
+def move_or_next(space: int):
+    yabai = Yabai()
+    current_space = yabai.yabai_run_with_json("""yabai -m query --windows | jq 'map(select(."has-focus"))[0].space'""")
+    layout = yabai.yabai_run_with_json("""yabai -m query --spaces --display | jq 'map(select(."is-visible"))[0].type'""")
+    if space != current_space:
+        yabai.yabai_run(f"yabai -m space --focus {space}")
+    else:
+        if layout == "stack":
+            yabai.yabai_run("yabai -m window --focus stack.next || yabai -m window --focus stack.first || true")
+        else:
+            yabai.yabai_run("yabai -m window --focus next || yabai -m window --focus first || true")
 
 @cmds_app.command("swap-spaces")
 def swap_spaces(display1, display2):
@@ -135,7 +150,6 @@ class Yabai:
                 empty_spaces.append(s["index"])
         empty_spaces.sort(reverse=True)
         for n in empty_spaces:
-            print(f"destroying space {n}")
             self.yabai_run(f"yabai -m space --destroy {n}")
 
     def current_space_has_no_window(self):
@@ -154,12 +168,12 @@ class Yabai:
             return 1
 
     def yabai_run_with_json(self, cmd: str) -> Any:
-        print(cmd)
+        #print(cmd)
         output = subprocess.run(cmd, capture_output=True, text=True, check=True, shell=True)
         return json.loads(output.stdout)
 
     def yabai_run(self, cmd: str):
-        print(cmd)
+        #print(cmd)
         subprocess.run(cmd, check=True, shell=True)
 
 def run():
