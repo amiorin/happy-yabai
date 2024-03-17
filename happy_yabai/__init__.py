@@ -28,22 +28,17 @@ def cycle_layout():
     else:
         yabai_run("yabai -m space --layout stack")
 
-@cmds_app.command("swap-or-prev")
-def swap_or_prev(space: int):
-    do_move_or_prev(space, True)
+@cmds_app.command("swap")
+def swap():
+    space_is_visible_no_focus = yabai_run_capture_json("""yabai -m query --spaces | jq 'map(select(."has-focus" | not)) | map(select(."is-visible")).[].index'""")
+    if space_is_visible_no_focus:
+        yabai_run(f"yabai -m space --swap {space_is_visible_no_focus}")
 
 @cmds_app.command("move-or-prev")
 def move_or_prev(space: int):
-    do_move_or_prev(space, False)
-
-def do_move_or_prev(space: int, swap: bool):
     current_space = yabai_run_capture_json("""yabai -m query --windows | jq 'map(select(."has-focus"))[0].space'""")
     current_win = yabai_run_capture_json("""yabai -m query --windows | jq 'map(select(."has-focus"))[].id'""")
     if space != current_space:
-        if swap:
-            target_win = yabai_run_capture_json(f"""yabai -m query --windows --space {space} | jq 'sort_by(."stack-index")[-1].id'""")
-            if target_win:
-                yabai_run(f"yabai -m window {target_win} --space {current_space}")
         yabai_run(f"yabai -m window {current_win} --space {space}")
         yabai_run(f"yabai -m window {current_win} --focus")
     else:
