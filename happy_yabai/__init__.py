@@ -30,9 +30,11 @@ def cycle_layout():
 
 @cmds_app.command("swap")
 def swap():
+    current_win = yabai_run_capture_json("""yabai -m query --windows | jq 'map(select(."has-focus"))[].id'""")
     space_is_visible_no_focus = yabai_run_capture_json("""yabai -m query --spaces | jq 'map(select(."has-focus" | not)) | map(select(."is-visible")).[].index'""")
     if space_is_visible_no_focus:
-        yabai_run(f"yabai -m space --swap {space_is_visible_no_focus}")
+        yabai_run(f"yabai -m window {current_win} --space {space_is_visible_no_focus}")
+        yabai_run(f"yabai -m window {current_win} --focus")
 
 @cmds_app.command("move-or-prev")
 def move_or_prev(space: int):
